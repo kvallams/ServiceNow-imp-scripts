@@ -1,0 +1,895 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<unload unload_date="2017-08-18 22:48:49">
+<sys_ui_page action="INSERT_OR_UPDATE">
+<category>general</category>
+<client_script><![CDATA[var app = angular.module('campusGrid',[]);
+app.config(['$locationProvider', function($locationProvider){
+	$locationProvider.html5Mode({
+		enabled: true,
+		requireBase: false
+	});
+}]);
+app.filter('capitalize', function() {
+	return function(input) {
+		return (!!input) ? input.toUpperCase(): '';
+	};
+});
+app.controller('gridCntrl',function($scope,$http,$location){
+	$scope.selectedCampus=[
+	{
+		u_name:'ucop',
+		u_flag:'From',
+		u_total: 0,
+		rowIndex:[]
+	}
+	];
+	$scope.calculateTotal = function(campus,rowObj){
+		campus.u_total=0;
+		if(rowObj.u_credit){
+			angular.forEach(campus.rowIndex, function(value, key){
+				campus.u_total = campus.u_total + Math.abs(value.u_credit);
+			});
+		}
+		if(rowObj.u_debit){
+			angular.forEach(campus.rowIndex, function(value, key){
+				campus.u_total = campus.u_total + Math.abs(value.u_debit);
+			});
+		}
+		if(campus.u_name=='ucop'&&campus.u_flag=='To'){
+			g_form.setValue('u_tot_amnt',campus.u_total);
+		}
+		console.log('total'+campus.u_total);
+	};
+	$scope.checkPlaceholder = function(campus,headerObj){
+		if(headerObj.campus_availability.hasOwnProperty(campus)){
+			return headerObj.campus_availability[campus].placeholder;
+		}
+	};
+	$scope.checkCampusHeader = function(campus,headerObj){
+		return headerObj.campus_availability.hasOwnProperty(campus);
+	};
+	
+	$scope.checkMandatory = function(campus,headerObj){
+		if(headerObj.campus_availability.hasOwnProperty(campus)){
+			return headerObj.campus_availability[campus].mandatory == 'true';
+		}
+		
+	};
+	$scope.checkPattern = function(campus,headerObj){
+		if(headerObj.campus_availability.hasOwnProperty(campus)){
+			return headerObj.campus_availability[campus].pattern;
+		}
+		
+	};
+	$scope.deleteRow = function(campus,index){
+		campus.rowIndex.splice(index, 1);
+	};
+	$scope.addRow = function(campus,rowIndex){
+		campus.rowIndex.push(new tempObj(campus,rowIndex));
+		function tempObj(campus,rowIndex){
+			this.u_campus = campus.u_name;
+			this.u_flag = campus.u_flag;
+			this.row = rowIndex.length;
+		}
+		//console.log($scope.selectedCampus);
+	};
+	$scope.clearAll = function(campus){
+		campus.rowIndex = [];
+		campus.u_total = 0;
+	};
+	$scope.init = function(){
+		//set header info based on the campus.
+		$scope.headers = [
+		{
+			name:'u_location',
+			label:'Location',
+			title:'Location',
+			style: 'width: 130px;',
+			type: "text",
+			campus_availability:{
+				ucop:{
+					placeholder:'Location',
+					mandatory:'true',
+					pattern:'\\w{1,100}'
+				},
+				ucb:{
+					placeholder:'Location',
+					mandatory:'true',
+					pattern:'\\w{1,100}'
+				},
+				ucd:{
+					placeholder:'Location',
+					mandatory:'true',
+					pattern:'\\w{1,100}'
+				},
+				uci:{
+					placeholder:'Location',
+					mandatory:'true',
+					pattern:'\\w{1,100}'
+				},
+				ucla:{
+					placeholder:'Location',
+					mandatory:'true',
+					pattern:'\\w{1,100}'
+				},
+				ucm:{
+					placeholder:'Location',
+					mandatory:'true',
+					pattern:'\\w{1,100}'
+				},
+				ucr:{
+					placeholder:'Location',
+					mandatory:'false',
+					pattern:'\\w{1,100}'
+				},
+				ucsb:{
+					placeholder:'Location',
+					mandatory:'true',
+					pattern:'\\w{1,100}'
+				},
+				ucsc:{
+					placeholder:'Location',
+					mandatory:'true',
+					pattern:'\\w{1,100}'
+				},
+				ucsd:{
+					placeholder:'Location',
+					mandatory:'true',
+					pattern:'\\w{1,100}'
+				},
+				ucsf:{
+					placeholder:'Location',
+					mandatory:'true',
+					pattern:'\\w{1,100}'
+				}
+			}
+		},
+		{
+			name:'u_account',
+			label:'Account',
+			title:'Account',
+			style: "width: 130px;",
+			type:"text",
+			campus_availability:{
+				ucop:{
+					placeholder:'6 digit',
+					mandatory:'true',
+					pattern:'\\d{6}'
+				},
+				ucb:{
+					placeholder:'5 digit',
+					mandatory:'true',
+					pattern:'\\d{5}'
+				},
+				ucd:{
+					placeholder:'7 digit',
+					mandatory:'true',
+					pattern:'\\d{7}'
+				},
+				uci:{
+					placeholder:'7 alphanumeric',
+					mandatory:'true',
+					pattern:'(\\w|\\d){7}'
+				},
+				ucla:{
+					placeholder:'6 digit',
+					mandatory:'true',
+					pattern:'(\\w|\\d){6}'
+				},
+				ucm:{
+					placeholder:'6 digit',
+					mandatory:'true',
+					pattern:'\\d{6}'
+				},ucr:{
+					placeholder:'6 digit',
+					mandatory:'false',
+					pattern:'\\d{6}'
+				},
+				ucsb:{
+					placeholder:'6 digit',
+					mandatory:'true',
+					pattern:'\\d{6}'
+				},
+				ucsc:{
+					placeholder:'5 digit',
+					mandatory:'true',
+					pattern:'\\d{5}'
+				},
+				ucsd:{
+					placeholder:'7 alphanumeric',
+					mandatory:'true',
+					pattern:'(\\w|\\d){7}'
+				},
+				ucsf:{
+					placeholder:'5 alphanumeric',
+					mandatory:'true',
+					pattern:'(\\w|\\d){5}'
+				}
+			}
+		},
+		{
+			name:'u_fund',
+			label:'Fund',
+			title:'Fund',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucop:{
+					placeholder:'5 digit',
+					mandatory:'false',
+					pattern:'\\d{5}'
+				},
+				ucb:{
+					placeholder:'5 digit',
+					mandatory:'true',
+					pattern:'\\d{5}'
+				},
+				uci:{
+					placeholder:'5 digit',
+					mandatory:'false',
+					pattern:'\\d{5}'
+				},
+				
+				ucla:{
+					placeholder:'5 digit',
+					mandatory:'true',
+					pattern:'\\d{5}'
+				},
+				ucm:{
+					placeholder:'5 digit',
+					mandatory:'true',
+					pattern:'\\d{5}'
+				},
+				
+				ucr:{
+					placeholder:'5 digit',
+					mandatory:'true',
+					pattern:'\\d{5}'
+				},
+				
+				
+				ucsb:{
+					placeholder:'5 digit',
+					mandatory:'true',
+					pattern:'\\d{5}'
+				},
+				
+				ucsc:{
+					placeholder:'5 digit',
+					mandatory:'true',
+					pattern:'\\d{5}'
+				},
+				
+				
+				ucsd:{
+					placeholder:'5/6 alphanumeric',
+					mandatory:'true',
+					pattern:'(\\w|\\d){5,6}'
+				},
+				ucsf:{
+					placeholder:'4 digit',
+					mandatory:'true',
+					pattern:'\\d{4}'
+				}
+			}
+		},
+		{
+			name:'u_index_number',
+			label:'Index Number',
+			title:'Index Number',
+			style: "width: 130px;",
+			type:"text",
+			campus_availability:{
+				ucsd:{
+					placeholder:'7 alphanumeric',
+					mandatory:'true',
+					pattern:'(\\w|\\d){7}'
+				},
+			}
+		},
+		{
+			name:'u_business_unit',
+			label:'Business Unit',
+			title:'Business Unit',
+			style: "width: 130px;",
+			type:"text",
+			campus_availability:{
+				ucsf:{
+					placeholder:'5 alphanumeric',
+					mandatory:'true',
+					pattern:'(\\w|\\d){5}'
+				},
+			}
+		},
+		{
+			name:'u_sub_account',
+			label:'Sub Account',
+			title:'Sub Account',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucd:{
+					placeholder:'5 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){5}'
+				}
+			}
+		},
+		{
+			name:'u_cost_center',
+			label:'Cost Center',
+			title:'Cost Center',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucla:{
+					placeholder:'2 digit',
+					mandatory:'false',
+					pattern:'\\d{2}'
+				},
+				ucm:{
+					placeholder:'2 digit',
+					mandatory:'false',
+					pattern:'\\d{2}'
+				},
+				ucr:{
+					placeholder:'4/5 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){4,5}'
+				}
+			}
+		},
+		{
+			name:'u_activity',
+			label:'Activity',
+			title:'Activity',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucr:{
+					placeholder:'6 alphanumeric',
+					mandatory:'true',
+					pattern:'(\\w|\\d){6}'
+				},
+			}
+		},
+		{
+			name:'u_doc_ref',
+			label:'Doc Ref',
+			title:'Doc Ref',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucsc:{
+					placeholder:'1-6 alphanumeric',
+					mandatory:'true',
+					pattern:'(\\w|\\d){1,6}'
+				},
+			}
+		},
+		{
+			name:'u_function',
+			label:'Function',
+			title:'Function',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucsf:{
+					placeholder:'2 digit',
+					mandatory:'true',
+					pattern:'\\d{2}'
+				},
+				ucr:{
+					placeholder:'2 digit',
+					mandatory:'true',
+					pattern:'\\d{2}'
+				}
+			}
+		},
+		{
+			name:'u_organization',
+			label:'Organization',
+			title:'Organization',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucb:{
+					placeholder:'5 digit',
+					mandatory:'true',
+					pattern:'\\d{5}'
+				},
+				ucsc:{
+					placeholder:'6 digit',
+					mandatory:'true',
+					pattern:'\\d{6}'
+				},
+				ucsd:{
+					placeholder:'6 digit',
+					mandatory:'false',
+					pattern:'\\d{6}'
+				}
+			}
+		},
+		{
+			name:'u_program',
+			label:'Program',
+			title:'Program',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucb:{
+					placeholder:'text',
+					mandatory:'false',
+					pattern:'\\w{1,100}'
+				},
+				ucsc:{
+					placeholder:'2 digit',
+					mandatory:'false',
+					pattern:'\\d{2}'
+				},
+				ucsd:{
+					placeholder:'6 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){6}'
+				}
+			}
+		},
+		{
+			name:'u_flex_field',
+			label:'FlexField',
+			title:'FlexField',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucb:{
+					placeholder:'5 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){5}'
+				},
+				ucsf:{
+					placeholder:'6 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){6}'
+				}
+			}
+		},
+		{
+			name:'u_sub_object',
+			label:'Sub Object',
+			title:'Sub Object',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucd:{
+					placeholder:'3 char',
+					mandatory:'false',
+					pattern:'.{3}'
+				}
+			}
+		},
+		{
+			name:'u_project',
+			label:'Project',
+			title:'Project',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucop:{
+					placeholder:'6 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){6}'
+				},
+				ucb:{
+					placeholder:'5 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){5}'
+				},
+				ucd:{
+					placeholder:'1-10 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){1,10}'
+				},
+				uci:{
+					placeholder:'1-6 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){1,6}'
+				},
+				
+				ucla:{
+					placeholder:'1-6 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){1,6}'
+				},
+				ucm:{
+					placeholder:'1-6 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){1,6}'
+				},
+				
+				ucr:{
+					placeholder:'5 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){5}'
+				},
+				ucsf:{
+					placeholder:'7 alphanumeric',
+					mandatory:'true',
+					pattern:'(\\w|\\d){7}'
+				}
+			}
+			
+		},{
+			name:'u_sub',
+			label:'Sub',
+			title:'Sub',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucop:{
+					placeholder:'2 digit',
+					mandatory:'false',
+					pattern:'\\d{2}'
+				},
+				uci:{
+					placeholder:'2 digit',
+					mandatory:'false',
+					pattern:'\\d{2}'
+				},
+				ucla:{
+					placeholder:'2 digit',
+					mandatory:'false',
+					pattern:'\\d{2}'
+				},
+				ucm:{
+					placeholder:'2 digit',
+					mandatory:'true',
+					pattern:'\\d{2}'
+				},
+				ucsb:{
+					placeholder:'1 digit',
+					mandatory:'true',
+					pattern:'\\d{1}'
+				}
+			}
+		},
+		{
+			name:'u_object',
+			label:'Object',
+			title:'Object',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucop:{
+					placeholder:'4 digit',
+					mandatory:'false',
+					pattern:'\\d{4}'
+				},
+				ucd:{
+					placeholder:'4 digit',
+					mandatory:'true',
+					pattern:'\\d{4}'
+				},
+				uci:{
+					placeholder:'4 alphanumeric',
+					mandatory:'true',
+					pattern:'(\\w|\\d){4}'
+				},
+				ucla:{
+					placeholder:'4 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){4}'
+				},
+				ucm:{
+					placeholder:'4 digit',
+					mandatory:'true',
+					pattern:'\\d{4}'
+				},
+				ucsb:{
+					placeholder:'4 digit',
+					mandatory:'true',
+					pattern:'\\d{4}'
+				}
+			}
+		},
+		{
+			name:'u_source',
+			label:'Source',
+			title:'Source',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucop:{
+					placeholder:'6 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){6}'
+				},
+				uci:{
+					placeholder:'1-6 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){1,6}'
+				},
+				ucla:{
+					placeholder:'6 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){6}'
+				},
+				ucm:{
+					placeholder:'6 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){6}'
+				},
+			}
+		},
+		{
+			name:'u_doc_date',
+			label:'Doc Date',
+			title:'Doc Date',
+			style: "width: 130px;",
+			type:'date',
+			campus_availability:{
+				ucop:{
+					
+					mandatory:'false',
+					pattern:'\\w{1,100}'
+				}
+			}
+		},
+		{
+			name:'u_trans',
+			label:'trans#',
+			title:'trans#',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucop:{
+					placeholder:'text',
+					mandatory:'false',
+					pattern:'\\w{1,100}'
+				}
+			}
+		},
+		{
+			name:'u_reference',
+			label:'Reference',
+			title:'Reference',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucop:{
+					placeholder:'text',
+					mandatory:'false',
+					pattern:'\\w{1,100}'
+				},
+				ucd:{
+					placeholder:'8 char',
+					mandatory:'false',
+					pattern:'.{8}'
+				},
+				uci:{
+					placeholder:'1-10 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){1,10}'
+				},
+				ucsb:{
+					placeholder:'1-6 alphanumeric',
+					mandatory:'false',
+					pattern:'(\\w|\\d){1,6}'
+				}
+			}
+		},
+		{
+			name:'u_debit',
+			label:'Debit($)',
+			title:'Debit',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucop:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucb:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucd:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				uci:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucla:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucm:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucr:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucsb:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucsc:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucsd:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucsf:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				}
+			}
+		},
+		{
+			name:'u_credit',
+			label:'Credit($)',
+			title:'Credit',
+			style: "width: 130px;",
+			type:'text',
+			campus_availability:{
+				ucop:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucb:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucd:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				uci:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucla:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucm:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucr:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucsb:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucsc:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucsd:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				},
+				ucsf:{
+					placeholder:'dollars',
+					mandatory:'false',
+					pattern:'^[0-9]+(\\.[0-9][0-9])?$'
+				}
+			}
+		},
+		];
+		//console.log($scope.headers);
+	};
+	
+});]]></client_script>
+<description>Grid used on BRC Cost Transfer form.</description>
+<direct>false</direct>
+<endpoint/>
+<html><![CDATA[<?xml version="1.0" encoding="utf-8" ?>
+
+<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+<style>
+input:invalid {
+    border: 2px solid red;
+}
+.capitalize {
+   text-transform: capitalize;
+		
+}	
+.gridColor tr:nth-child(odd) {
+  background-color: #f1f1f1;
+}
+.gridColor tr:nth-child(even) {
+  background-color: #ffffff;
+}
+
+
+		
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>	
+	<div name="campusGrid"  ng-app="campusGrid"  ng-controller="gridCntrl" ng-init="init()" class="ng-cloak">
+	<form name = "campusGridForm" >
+	<div ng-repeat="camp in selectedCampus" >
+		<h4><span >{{camp.u_flag| capitalize}}: {{camp.u_name | capitalize}} Grid</span></h4>
+		<button href="#" title="Add row" class="form_action_button header" ng-click="addRow(camp,camp.rowIndex)"><span>Add Row</span></button>
+		<span>&#160;&#160;&#160;</span>
+		<button href="#" title="Clear all" class="form_action_button header" ng-click="clearAll(camp)"><span>Clear All</span></button>
+			
+	<span style="border: 2px solid;
+    padding: 3px; 
+    width: 100px;
+    overflow: auto;
+	float:right;"><b>Total: </b><b ng-model = "camp.u_total">{{camp.u_total}}</b></span>
+	
+		<table name = "{{camp.u_name}}" class="wideDataList list_table embedded_t gridColor" style="width: 100%; outline: none;" >
+		
+		<tr>
+			<th></th>
+			<th ng-repeat="x in headers"  class='list_hdrcell list_hdrembedded' title="{{x.name}}" style="text-align: left" ng-if="checkCampusHeader($parent.camp.u_name,x)"><img class='i16x16 list_context' src='images/context.gifx'/><span >{{x.label}}</span><span ng-if="checkMandatory($parent.$parent.camp.u_name,x)">&#160;*</span></th>
+		</tr>
+		<tr ng-repeat="row in camp.rowIndex">
+			<td>
+			<span class='list_decoration embedded' ng-click='deleteRow($parent.camp,$index)'><img title='Delete Row' height='16' width='16' class='list_delete_row list_decoration clsshort button' src='images/delete_row.gifx'/></span>
+			</td>
+			<td ng-repeat="x in headers" ng-if="checkCampusHeader($parent.$parent.camp.u_name,x)">
+				<input name="{{x.name}}" ng-model="row[x.name]" type="text" style="width:95px;height:24px" ng-if="x.type == 'text'" 
+					   pattern="{{checkPattern($parent.$parent.$parent.camp.u_name,x)}}" ng-required="checkMandatory($parent.$parent.$parent.camp.u_name,x)" 
+					   placeholder ="{{checkPlaceholder($parent.$parent.$parent.camp.u_name,x)}}" ng-change="calculateTotal($parent.$parent.$parent.camp,row)">
+				</input>
+				<input name="{{x.name}}" ng-model="row[x.name]" type="date" style="width:125px;height:24px" ng-if="x.type == 'date'"></input>
+			</td>
+		</tr>	
+	</table>
+		
+		<p id="list_msg_t" style="font-style:italic; color: #a3a3a3; background-color: #eee; with: 100%; padding: 7px; text-align: center; margin-top: 0; margin-bottom: 0; display: none">The list is empty, click on Add Row button to start creating rows.</p>
+	<p style="margin-top: 0; margin-bottom: 10px; with: 100%; height: 4px"></p>
+	</div>
+	</form>	
+	</div>
+</j:jelly>]]></html>
+<name>campus grid</name>
+<processing_script/>
+<sys_class_name>sys_ui_page</sys_class_name>
+<sys_created_by>kvallams</sys_created_by>
+<sys_created_on>2017-03-06 23:53:37</sys_created_on>
+<sys_customer_update>true</sys_customer_update>
+<sys_id>858a87da135df6003878dbf18144b016</sys_id>
+<sys_mod_count>263</sys_mod_count>
+<sys_name>campus grid</sys_name>
+<sys_package display_value="Global" source="global">global</sys_package>
+<sys_policy/>
+<sys_replace_on_upgrade>false</sys_replace_on_upgrade>
+<sys_scope display_value="Global">global</sys_scope>
+<sys_update_name>sys_ui_page_858a87da135df6003878dbf18144b016</sys_update_name>
+<sys_updated_by>admin</sys_updated_by>
+<sys_updated_on>2017-08-18 22:48:03</sys_updated_on>
+</sys_ui_page>
+</unload>
