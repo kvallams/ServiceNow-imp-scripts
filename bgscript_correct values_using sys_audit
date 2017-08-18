@@ -1,0 +1,19 @@
+//background script which could be used to correct the state on chnage_request table!!!
+gr =  new GlideRecord('sys_audit');
+gr.addQuery('tablename','change_request');
+gr.addQuery('fieldname','state');
+gr.query();
+while(gr.next()){
+	if(gr.oldvalue == 2 && gr.newvalue == 5){
+	var sysid = gr.documentkey;
+	grChangereq = new GlideRecord('change_request');
+	grChangereq.addQuery('sys_id', sysid);
+	grChangereq.query();
+	if(grChangereq.next()){
+	grChangereq.state = 2;
+	grChangereq.update();
+	gs.print('the bgscript has changed the state to cancelled from implemented for the change request >>' + grChangereq.number);
+	gs.print('grChangereq.state value >>'+grChangereq.state);
+	}
+  }
+}

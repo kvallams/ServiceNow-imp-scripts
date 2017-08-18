@@ -1,0 +1,47 @@
+//============scheduled job script to remove inactive users from the groups**********NEW WORKING******======
+(function(){
+   var oldGrp = '';
+   function GroupInfo(name,mgrEmail){
+      this.name=name;
+      this.manager_email=mgrEmail;
+      this.members=[];
+      
+   }
+   var _groupObj ={};
+   
+   
+   var groupArr =[];
+   var gr = new GlideRecord('sys_user_grmember');
+   gr.orderBy('group');
+   gr.addEncodedQuery('group.active=true');
+   gr.query();
+   while(gr.next()){
+      if(gr.group.name == oldGrp){
+         this._groupObj.members.push(gr.user.name);
+      }
+      else{
+         if(oldGrp == ''){
+            oldGrp = gr.group.name;
+         }
+         if(this._groupObj != '')
+            groupArr.push(this._groupObj);
+         var k = new GroupInfo(gr.group.name,gr.group.manager.email);
+         k.members.push(gr.user.name);
+         k.sys_id=gr.group.sys_id;
+         this._groupObj= k;
+         oldGrp = gr.group.name;
+      }
+      
+      
+   }
+   
+   for(var i =0;i<groupArr.length;i++){
+      gs.eventQueue('scheduledjob.group.audit',gr,groupArr[i].manager_email,groupArr[i].sys_id+':'+groupArr[i].name+':'+groupArr[i].members.join());
+      /*s=s+'\n'+groupArr[i].name+'::'+groupArr[i].members.join();
+      for(var j in groupArr[i]){
+         s = s+'\n'+j+':::'+groupArr[i][j].toString();
+      }
+       */
+   }
+   
+})();

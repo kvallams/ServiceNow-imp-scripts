@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+
+<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+	
+	<!--************************************************-->
+	<!--********   FAVORITING FUNCTION BLOCK    ********-->
+	<!--************************************************-->
+	<script>
+	jQuery.noConflict()(function ($) { 
+	$(document).ready(function()
+	{
+    
+	$('body').on("click",'.heart',function()
+    {
+    	var heart = $(this);
+		var relVal = heart.attr('rel');
+		var id = this.id.split("like#")[1];
+       
+		if(relVal === 'like') {      
+			heart.attr("class",'heart heartAnimation');
+        	heart.attr("rel","unlike");
+			var ga = new GlideAjax('FavoriteKB');
+			ga.addParam('sysparm_name','addFavorite');
+			ga.addParam('sysparm_user',"$[gs.getUserID()]");
+			ga.addParam('sysparm_id',id);
+			ga.getXML();
+		}
+        else{
+        	heart.attr("class",'heart');
+			heart.attr("rel","like");
+			var gb = new GlideAjax('FavoriteKB');
+			gb.addParam('sysparm_name','removeFavorite');
+			gb.addParam('sysparm_user',"$[gs.getUserID()]");
+			gb.addParam('sysparm_id',id);
+			gb.getXML();
+		}
+    });
+	});
+	});
+	</script>
+	
+	<!--   **************************   -->
+	<!-- SCRIPT FOR LOGGING VIEW COUNTS -->
+	<!--   **************************   -->
+	<script>
+		jQuery.noConflict()(function ($) { $(document).ready(function() {
+			$('body').on("click",'.addView',function() {
+		
+				var link = $(this);
+				var id = link.attr('id');
+		
+				var ga = new GlideAjax('ArticleViews');
+				ga.addParam('sysparm_name','addView');
+				ga.addParam('sysparm_user',"$[gs.getUserID()]");
+				ga.addParam('sysparm_id',id);
+				ga.getXML();
+		   });
+		});
+		});
+	</script>
+	
+	
+	<!--************************************************-->
+	<!--******** FIRST SEARCH FOR ONLY POLICIES ********-->
+	<!--************************************************-->
+	<g2:evaluate>
+		var text = RP.getParameterValue('sysparm_search');	
+		var lang = RP.getParameterValue('language_picker');
+		var search = new GlideRecord('kb_knowledge');
+		//search.addQuery('article_type','Policy');
+		search.addQuery('workflow_state','published');
+		search.addEncodedQuery("article_typeNOT INHelp,cant find your policy");
+		search.addEncodedQuery('metaLIKE'+text);//modified
+		search.orderBy('meta');//modified
+		search.setLimit(40);
+		//search.addQuery('u_language',lang);
+		search.query()
+	</g2:evaluate>
+	<j2:if test="$[search.hasNext()]">
+		<h2>Search results for "$[text]" within all documents</h2>
+		<ul>
+			<p>$[search.u_has_attachments]</p>
+			<j2:while test="$[search.next()]">
+				<j2:if test="$[search.u_document_native_title != '']">
+					<j2:set var="jvar_sDisplay" value="$[search.u_document_native_title]"/>
+					<j2:set var="jvar_sTitle" value="$[search.short_description]"/>
+				</j2:if>
+				<j2:if test="$[search.u_document_native_title == '']">
+					<j2:set var="jvar_sDisplay" value="$[search.short_description]"/>
+					<j2:set var="jvar_sTitle" value="$[search.kb_category.parent_id.label] > $[search.kb_category.label]"/>
+				</j2:if>
+				<j2:set var="jvar_search_id" value="$[search.sys_id]"/>
+					<!-- NOW SEARCH FOR CHILD POLICIES -->
+					<!--*******************************-->
+				<g2:evaluate jelly="true">
+					var childCount = new GlideAggregate('kb_knowledge');
+					childCount.addAggregate('COUNT');
+
+					childCount.addQuery('u_parent',jelly.jvar_search_id);
+					childCount.addQuery('workflow_state','published');
+					childCount.addQuery('123TEXTQUERY321',"$[text]");
+					childCount.query();
+					var kids = 0;
+
+					if (childCount.next()){
+						kids = childCount.getAggregate('COUNT');
+					}
+					
+					if (kids > 0){
+						var children = new GlideRecord('kb_knowledge');
+						children.addQuery('u_parent',jelly.jvar_search_id);
+						children.addQuery('active','true');
+						children.addQuery('workflow_state','published');
+						children.addQuery('123TEXTQUERY321',"$[text]");
+						children.orderBy('short_description');
+						children.query();
+						children;			
+					}
+				</g2:evaluate>
+				
+				<!--*************************************************-->
+				<!--*** NOW FORMAT HOW THE SEARCH RESULTS SHOULD ****-->
+				<!--***** LINK TO HTML FOR NON ATTACHMENTS **********-->
+				<!--*************************************************-->
+
+				<j2:if test="$[search.u_has_attachments == true]">
+					<li><a style="font-size: 14pt; color:#0085ca;" class="addView" id="$[search.sys_id]" title="$[jvar_sTitle]"  href="article_version.do?id=$[search.u_source_record_id]" >$[jvar_sDisplay]</a>
+					<table>
+	<tr>
+		<td style="padding-right:15px;"><p>$[search.article_type] | $[search.u_effective_date.toString().substring(0,10)] | $[search.u_language.getDisplayValue()]</p></td>
+		<td><p><a href="#openComments-$[search.sys_id]" onClick='document.getElementById("gsft_main#$[search.sys_id]").src="com.glideapp.servicecatalog_cat_item_view.do?v=1${AMP}sysparm_id=210129c9372016000c7aefb2b3990ea3${AMP}sysparm_kb_id=$[search.sys_id]${AMP}sysparm_sd=$[search.short_description]";'>Leave a Comment</a></p></td>
+		<td><div id="openComments-$[search.sys_id]" class="commentDialog"> 
+			<div>
+				<a href="#close" title="Close" class="close">x</a>
+				<iframe id="gsft_main#$[search.sys_id]" src="loading.do" height="200" width="100%"></iframe>
+			</div>		
+		</div>
+	</td>
+		<!--<td><div class="heart " id="like#$[search.sys_id]" rel="like" style="margin-bottom:10px;"></div></td>-->
+</tr>
+</table>
+						
+					<ul>
+						
+						<j2:while test="$[children.next()]">
+							<j2:if test="$[children.u_document_native_title != '']">
+								<j2:set var="jvar_chDisplay" value="$[children.u_document_native_title]"/>
+								<j2:set var="jvar_chTitle" value="$[children.short_description]"/>
+							</j2:if>
+							<j2:if test="$[children.u_document_native_title == '']">
+								<j2:set var="jvar_chDisplay" value="$[children.short_description]"/>
+								<j2:set var="jvar_chTitle" value="$[children.kb_category.parent_id.label] > $[children.kb_category.label]"/>
+							</j2:if>
+							<!--*************************************************-->
+							<!--*** DETERMINE IF CHILD POLICY HAS ATTACHMENT  ***-->
+							<!--*************************************************-->
+							
+							<j2:if test="$[children.u_has_attachments == true]">
+								<li><a style="font-size: 14pt; color:#0085ca;" class="addView" id="$[children.sys_id]" title="$[jvar_chTitle]" href="article_version.do?id=$[children.u_source_record_id]" >$[jvar_chDisplay]</a>
+								<table>
+	<tr>
+		<td style="padding-right:15px;"><p>$[children.article_type] | $[children.u_effective_date.toString().substring(0,10)] | $[children.u_language.getDisplayValue()]</p></td>
+		<td><p><a href="#openComments-$[children.sys_id]" onclick='document.getElementById("gsft_main#$[children.sys_id]").src="com.glideapp.servicecatalog_cat_item_view.do?v=1${AMP}sysparm_id=210129c9372016000c7aefb2b3990ea3${AMP}sysparm_kb_id=$[children.sys_id]${AMP}sysparm_sd=$[children.short_description]";'>Leave a Comment</a></p></td>
+		<td><div id="openComments-$[children.sys_id]" class="commentDialog"> 
+			<div>
+				<a href="#close" title="Close" class="close">x</a>
+				<iframe id="gsft_main#$[children.sys_id]" src="loading.do" height="200" width="100%"></iframe>
+			</div>
+		</div>
+	</td>
+	<!--<td><div class="heart " id="like#$[children.sys_id]" rel="like" style="margin-bottom:10px;"></div></td>-->
+</tr>
+</table>
+								</li>
+							</j2:if>
+						<j2:if test="$[children.u_has_attachments == false]">
+							<li><a style="font-size: 14pt; color:#0085ca;" class="addView" id="$[children.sys_id]" title="$[jvar_chTitle]" href="article_version.do?sys_id=$[children.u_source_record_id]" target="_self">$[jvar_chDisplay]</a>
+							<p>$[children.article_type] | $[children.u_effective_date.toString().substring(0,10)] | $[children.u_language.getDisplayValue()]</p>
+						</li>
+					</j2:if>
+				</j2:while>
+			</ul>
+		</li>
+		<hr />
+	</j2:if>
+	<j2:if test="$[search.u_has_attachments == false]">
+		<li><a style="font-size: 14pt; color:#0085ca;" class="addView" id="$[search.sys_id]" title="$[jvar_sTitle] > $[search.kb_category.label]" href="article_version.do?id=$[search.u_source_record_id]" target="_self">$[jvar_sDisplay]</a>
+		<p>$[search.article_type] | $[search.u_effective_date.toString().substring(0,10)] | $[search.u_language.getDisplayValue()]</p>
+		<ul>
+			<!--*******************************-->
+			<!-- CHILD POLICIES -->
+			<!--*******************************-->
+
+			<j2:while test="$[children.next()]">
+				<!--*************************************************-->
+				<!--*** DETERMINE IF POLICY IS ATTACHMENT (AGAIN) ***-->
+				<!--*************************************************-->
+
+				<j2:if test="$[children.u_has_attachments == true]">
+					<li><a style="font-size: 14pt; color:#0085ca;" class="addView" id="$[children.sys_id]" title="$[jvar_chTitle] > $[children.kb_category.label]" href="article_version.do?id=$[children.u_source_record_id]">$[jvar_chDisplay]</a>
+					<p>$[children.article_type] | $[children.u_effective_date.toString().substring(0,10)] | $[children.u_language.getDisplayValue()]</p>
+				</li>
+			</j2:if>
+			<j2:if test="$[children.u_has_attachments == false]">
+				<li><a style="font-size: 14pt; color:#0085ca;" class="addView" id="$[children.sys_id]" title="$[jvar_chTitle]" href="article_version.do?id=$[children.u_source_record_id]" target="_self">$[jvar_chDisplay]</a>
+				<p>$[children.article_type] | $[children.u_effective_date.toString().substring(0,10)] | $[children.u_language.getDisplayValue()]</p>
+			</li>
+		</j2:if>
+	</j2:while>
+</ul>
+</li>
+<hr />
+</j2:if>
+</j2:while>
+</ul>
+</j2:if>
+				<!--*************************************************-->
+				<!--***ADDING ADDITIONAL SEARCH RESULTS**************-->
+				<!--*****FOR MISSING META FIELD AND ORDERBY**********-->
+				<!--****************VIEW COUNT***********************-->
+				<!--*************************************************-->
+<g2:evaluate>
+		var text_2 = RP.getParameterValue('sysparm_search');	
+		var lang_2 = RP.getParameterValue('language_picker');
+		var search_meta_count=0;
+		var search_count = new GlideAggregate('kb_knowledge');
+		search_count.addEncodedQuery('metaLIKE'+text_2);
+		search_count.addAggregate('COUNT');
+		search_count.query();
+		if(search_count.next()){
+			search_meta_count = search_count.getAggregate('COUNT');
+		}
+		var limit = 40 - search_meta_count;
+	//gs.log('******Limit'+limit);
+	var sys_id_query="";
+	var gr = new GlideRecord('kb_knowledge');
+		//gr.addQuery('article_type','Policy');
+		gr.addQuery('workflow_state','published');
+		gr.addEncodedQuery("article_typeNOT INHelp,cant find your policy");
+		gr.addEncodedQuery('metaLIKEvacation');//modified
+		gr.orderBy('meta');//modified
+		gr.setLimit(40);
+		//gr.addQuery('u_language',lang);
+		gr.query();
+		while(gr.next()){
+	if(sys_id_query == ''){
+		sys_id_query ='sys_id!='+gr.sys_id.toString();
+	}
+	else{
+	sys_id_query = sys_id_query+'^ORsys_id!='+gr.sys_id.toString();
+	}
+	
+	}
+	//gs.log('*******sys_id_query'+sys_id_query);
+		var search_2 = new GlideRecord('kb_knowledge');
+		//search_2.addQuery('article_type','Policy');
+		search_2.addQuery('workflow_state','published');
+		search_2.addEncodedQuery("article_typeNOT INHelp,cant find your policy");
+		search_2.addEncodedQuery('123TEXTQUERY321='+text_2);
+		search_2.addEncodedQuery(sys_id_query);
+		search_2.orderByDesc('sys_view_count');
+		search_2.setLimit(limit);
+		//search_2.addQuery('u_language',lang);
+		search_2.query()
+	</g2:evaluate>
+	<j2:if test="$[search_2.hasNext()]">
+		<ul>
+			<p>$[search_2.u_has_attachments]</p>
+			<j2:while test="$[search_2.next()]">	
+				<j2:if test="$[search_2.u_document_native_title != '']">
+					<j2:set var="jvar_sDisplay" value="$[search_2.u_document_native_title]"/>
+					<j2:set var="jvar_sTitle" value="$[search_2.short_description]"/>
+				</j2:if>
+				<j2:if test="$[search_2.u_document_native_title == '']">
+					<j2:set var="jvar_sDisplay" value="$[search_2.short_description]"/>
+					<j2:set var="jvar_sTitle" value="$[search_2.kb_category.parent_id.label] > $[search_2.kb_category.label]"/>
+				</j2:if>
+				<j2:set var="jvar_search_id" value="$[search_2.sys_id]"/>
+					<!-- NOW SEARCH FOR CHILD POLICIES -->
+					<!--*******************************-->
+				<g2:evaluate jelly="true">
+					var childCount = new GlideAggregate('kb_knowledge');
+					childCount.addAggregate('COUNT');
+
+					childCount.addQuery('u_parent',jelly.jvar_search_id);
+					childCount.addQuery('workflow_state','published');
+					childCount.addQuery('123TEXTQUERY321',"$[text_2]");
+					childCount.query();
+					var kids = 0;
+
+					if (childCount.next()){
+						kids = childCount.getAggregate('COUNT');
+					}
+					
+					if (kids > 0){
+						var children = new GlideRecord('kb_knowledge');
+						children.addQuery('u_parent',jelly.jvar_search_id);
+						children.addQuery('active','true');
+						children.addQuery('workflow_state','published');
+						children.addQuery('123TEXTQUERY321',"$[text_2]");
+						children.orderBy('short_description');
+						children.query();
+						children;			
+					}
+				</g2:evaluate>
+				
+				<!--*************************************************-->
+				<!--*** NOW FORMAT HOW THE SEARCH RESULTS SHOULD ****-->
+				<!--***** LINK TO HTML FOR NON ATTACHMENTS **********-->
+				<!--*************************************************-->
+
+				<j2:if test="$[search_2.u_has_attachments == true]">
+					<li><a style="font-size: 14pt; color:#0085ca;" class="addView" id="$[search_2.sys_id]" title="$[jvar_sTitle]"  href="article_version.do?id=$[search_2.u_source_record_id]" >$[jvar_sDisplay]</a>
+					<table>
+	<tr>
+		<td style="padding-right:15px;"><p>$[search_2.article_type] | $[search_2.u_effective_date.toString().substring(0,10)] | $[search_2.u_language.getDisplayValue()]</p></td>
+		<td><p><a href="#openComments-$[search_2.sys_id]" onClick='document.getElementById("gsft_main#$[search_2.sys_id]").src="com.glideapp.servicecatalog_cat_item_view.do?v=1${AMP}sysparm_id=210129c9372016000c7aefb2b3990ea3${AMP}sysparm_kb_id=$[search_2.sys_id]${AMP}sysparm_sd=$[search_2.short_description]";'>Leave a Comment</a></p></td>
+		<td><div id="openComments-$[search_2.sys_id]" class="commentDialog"> 
+			<div>
+				<a href="#close" title="Close" class="close">x</a>
+				<iframe id="gsft_main#$[search_2.sys_id]" src="loading.do" height="200" width="100%"></iframe>
+			</div>		
+		</div>
+	</td>
+		<!--<td><div class="heart " id="like#$[search_2.sys_id]" rel="like" style="margin-bottom:10px;"></div></td>-->
+</tr>
+</table>
+						
+					<ul>
+						
+						<j2:while test="$[children.next()]">
+							<j2:if test="$[children.u_document_native_title != '']">
+								<j2:set var="jvar_chDisplay" value="$[children.u_document_native_title]"/>
+								<j2:set var="jvar_chTitle" value="$[children.short_description]"/>
+							</j2:if>
+							<j2:if test="$[children.u_document_native_title == '']">
+								<j2:set var="jvar_chDisplay" value="$[children.short_description]"/>
+								<j2:set var="jvar_chTitle" value="$[children.kb_category.parent_id.label] > $[children.kb_category.label]"/>
+							</j2:if>
+							<!--*************************************************-->
+							<!--*** DETERMINE IF CHILD POLICY HAS ATTACHMENT  ***-->
+							<!--*************************************************-->
+							
+							<j2:if test="$[children.u_has_attachments == true]">
+								<li><a style="font-size: 14pt; color:#0085ca;" class="addView" id="$[children.sys_id]" title="$[jvar_chTitle]" href="article_version.do?id=$[children.u_source_record_id]" >$[jvar_chDisplay]</a>
+								<table>
+	<tr>
+		<td style="padding-right:15px;"><p>$[children.article_type] | $[children.u_effective_date.toString().substring(0,10)] | $[children.u_language.getDisplayValue()]</p></td>
+		<td><p><a href="#openComments-$[children.sys_id]" onclick='document.getElementById("gsft_main#$[children.sys_id]").src="com.glideapp.servicecatalog_cat_item_view.do?v=1${AMP}sysparm_id=210129c9372016000c7aefb2b3990ea3${AMP}sysparm_kb_id=$[children.sys_id]${AMP}sysparm_sd=$[children.short_description]";'>Leave a Comment</a></p></td>
+		<td><div id="openComments-$[children.sys_id]" class="commentDialog"> 
+			<div>
+				<a href="#close" title="Close" class="close">x</a>
+				<iframe id="gsft_main#$[children.sys_id]" src="loading.do" height="200" width="100%"></iframe>
+			</div>
+		</div>
+	</td>
+	<!--<td><div class="heart " id="like#$[children.sys_id]" rel="like" style="margin-bottom:10px;"></div></td>-->
+</tr>
+</table>
+								</li>
+							</j2:if>
+						<j2:if test="$[children.u_has_attachments == false]">
+							<li><a style="font-size: 14pt; color:#0085ca;" class="addView" id="$[children.sys_id]" title="$[jvar_chTitle]" href="article_version.do?sys_id=$[children.u_source_record_id]" target="_self">$[jvar_chDisplay]</a>
+							<p>$[children.article_type] | $[children.u_effective_date.toString().substring(0,10)] | $[children.u_language.getDisplayValue()]</p>
+						</li>
+					</j2:if>
+				</j2:while>
+			</ul>
+		</li>
+		<hr />
+	</j2:if>
+	<j2:if test="$[search_2.u_has_attachments == false]">
+		<li><a style="font-size: 14pt; color:#0085ca;" class="addView" id="$[search_2.sys_id]" title="$[jvar_sTitle] > $[search_2.kb_category.label]" href="article_version.do?id=$[search_2.u_source_record_id]" target="_self">$[jvar_sDisplay]</a>
+		<p>$[search_2.article_type] | $[search_2.u_effective_date.toString().substring(0,10)] | $[search_2.u_language.getDisplayValue()]</p>
+		<ul>
+			<!--*******************************-->
+			<!-- CHILD POLICIES -->
+			<!--*******************************-->
+
+			<j2:while test="$[children.next()]">
+				<!--*************************************************-->
+				<!--*** DETERMINE IF POLICY IS ATTACHMENT (AGAIN) ***-->
+				<!--*************************************************-->
+
+				<j2:if test="$[children.u_has_attachments == true]">
+					<li><a style="font-size: 14pt; color:#0085ca;" class="addView" id="$[children.sys_id]" title="$[jvar_chTitle] > $[children.kb_category.label]" href="article_version.do?id=$[children.u_source_record_id]">$[jvar_chDisplay]</a>
+					<p>$[children.article_type] | $[children.u_effective_date.toString().substring(0,10)] | $[children.u_language.getDisplayValue()]</p>
+				</li>
+			</j2:if>
+			<j2:if test="$[children.u_has_attachments == false]">
+				<li><a style="font-size: 14pt; color:#0085ca;" class="addView" id="$[children.sys_id]" title="$[jvar_chTitle]" href="article_version.do?id=$[children.u_source_record_id]" target="_self">$[jvar_chDisplay]</a>
+				<p>$[children.article_type] | $[children.u_effective_date.toString().substring(0,10)] | $[children.u_language.getDisplayValue()]</p>
+			</li>
+		</j2:if>
+	</j2:while>
+</ul>
+</li>
+<hr />
+</j2:if>
+</j2:while>
+</ul>
+</j2:if>
+<j2:if test ="$[search.getRowCount() == 0 &amp;&amp; search_2.getRowCount() == 0]">
+	<h2>No search results found for "$[text]". Try a new search term or visit the <a href="/policy/cant_find">Don't see your policy?</a> help page.</h2>
+</j2:if>
+
+</j:jelly>

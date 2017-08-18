@@ -1,0 +1,40 @@
+var LDAPUtilCC = Class.create();  
+  
+LDAPUtilCC.prototype = Object.extendsObject(AbstractAjaxProcessor, {  
+    
+   getUserGUID : function(userName){  
+      var strUserId = new String(userName);  
+      strUserId = strUserId.replaceAll(/[^a-zA-Z 0-9*]+/g,'');  
+      return this._queryLDAP(strUserId);  
+       
+   },  
+    
+   _queryLDAP : function(strUserId){  
+      var userGuid = "";  
+      try{  
+         var rec = new GlideRecord('ldap_server_config');  
+         rec.get('fda9e90cac162c5e019dfeb9ffd9a3df');  
+         var ldapc = new Packages.com.glide.sys.ldap.LDAPConfig(rec);  
+         var ldap = new Packages.com.glide.sys.ldap.LDAP();  
+         ldap.setConfig(ldapc);  
+         var query = '';  
+          
+         if(!JSUtil.nil(strUserId)){  
+            query = "(sAMAccountName=" + strUserId +")";  
+         }  
+         var result = ldap.getMatching('',query,true,1000);  
+          
+         if(!JSUtil.nil(result)){  
+            while(test = result.next()){  
+               var strResult = test.toString();  
+               gs.log(strResult);  
+            }  
+         }  
+      }catch{  
+         gs.log("LDAPUtilCC: " + e);  
+      }  
+      return userGuid;  
+   },  
+   type : "LDAPUtilCC"  
+    
+});  

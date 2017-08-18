@@ -1,0 +1,59 @@
+//Scheduled job to pull CI information form Pupped Db and update CMDB.
+
+(function(){
+	var result;
+	var ciObj = {};
+	var ciObjStr = '';
+	var json = new JSON();
+	var tempObj = function (name,value){
+		var prop_name = name;
+		var val = value;
+		var temp={};
+		temp[prop_name] = val;
+		return temp;
+	};
+	//Initiating rest call to puppet DB
+	try {
+		var r = new sn_ws.RESTMessageV2('Puppet Integration', 'get');
+		var response = r.execute();
+		var responseBody = response.getBody();
+		var httpStatus = response.getStatusCode();
+		
+		result = json.decode(responseBody);
+	}
+	catch(ex) {
+		var message = ex.getMessage();
+	}
+	//building CI Objects for each server.
+	for(var i=0;i<result.length;i++){
+		//if it is a new server add to CIObj
+		if(JSUtil.nil(ciObj[result[i].certname])){
+			ciObj[result[i].certname] =  tempObj(result[i].name,result[i].value) ;
+		}
+		else{//if it is an existing server add the property to existing server object.
+			ciObj[result[i].certname][result[i].name] = result[i].value;
+	}
+}
+//printing the object
+for(var key in ciObj){
+	for(var j in ciObj[key]){
+		ciObjStr = ciObjStr + key +'::'+ j +'::'+ ciObj[key][j];
+	}
+}
+//code to update the CMDB
+for(var key in ciObj){
+	
+		var gr = new GlideRecord('cmdb_ci_linux_server');
+		gr.addEncodedQuery('install_status=1^name='+key);
+		gr.query();
+		if(gr.next()){
+			gr.setDisplayValue('model_id',ciObj[key]['blockdevice_sr0_model']);
+			gr.ip_address = ciObj[key]['ipaddress'];
+			
+		}
+	
+}
+	
+//gs.log('Scheduled Job::Update CMDB from puppet::ciObjStr:: '+ciObjStr);
+})();
+

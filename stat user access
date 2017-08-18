@@ -1,0 +1,48 @@
+//============scheduled job script to send user access audits**********NEW WORKING******======
+(function(){
+   var oldMgr = '';
+	var _userObj ={};
+   var usrArr =[];
+   var gr = new GlideRecord('u_ucpath_access_management');
+   gr.orderBy('u_manager');
+   gr.addEncodedQuery('u_state=true^u_application=STAT^u_last_reviewed_date<javascript:gs.beginningOfThisQuarter()^ORu_last_reviewed_dateISEMPTY');
+   gr.query();
+   while(gr.next()){
+      if(gr.u_manager.sys_id == oldMgr){
+         this._userObj.members.push(gr.u_user.name+'|'+gr.u_role+'|'+gr.u_application);
+      }
+      else{
+         if(oldMgr == ''){
+            oldMgr = gr.u_manager.sys_id;
+         }
+         if(this._userObj != ''){
+			 usrArr.push(this._userObj);
+		 } 
+         var k = new userInfo(gr.u_manager.sys_id,gr.u_manager.email);
+         k.members.push(gr.u_user.name+'|'+gr.u_role+'|'+gr.u_application);
+         this._userObj= k;
+         oldMgr = gr.u_manager.sys_id;
+      } 
+   }
+	if(this._userObj != ''){
+		usrArr.push(this._userObj);
+	}
+	gs.log('ScheduledJob::User access audit::usrArrLength::'+usrArr.length);
+   for(var i =0;i<usrArr.length;i++){
+      gs.eventQueue('schedule.job.stat.user.audit',gr,usrArr[i].mgrSysId,usrArr[i].members.join());
+      /*s=s+'\n'+groupArr[i].name+'::'+groupArr[i].members.join();
+      for(var j in groupArr[i]){
+         s = s+'\n'+j+':::'+groupArr[i][j].toString();
+      }
+       */
+   }
+	
+   
+})();
+
+function userInfo(sysId,mgrEmail){
+      this.mgrSysId=sysId;
+      this.manager_email=mgrEmail;
+      this.members=[];
+}
+   
